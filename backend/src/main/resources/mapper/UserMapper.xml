@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.energytrading.mapper.UserMapper">
+
+    <resultMap id="BaseResultMap" type="com.energytrading.entity.User">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="blockchain_address" property="blockchainAddress"/>
+        <result column="role" property="role"/>
+        <result column="balance" property="balance"/>
+        <result column="status" property="status"/>
+        <result column="trust_score" property="trustScore"/>
+        <result column="created_time" property="createdTime"/>
+        <result column="updated_time" property="updatedTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, username, password, blockchain_address, role, balance, status, trust_score, created_time, updated_time
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByUsername" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user
+        WHERE username = #{username}
+    </select>
+
+    <select id="selectByBlockchainAddress" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user
+        WHERE LOWER(blockchain_address) = LOWER(#{blockchainAddress})
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user
+        ORDER BY created_time DESC
+    </select>
+
+    <select id="selectByUsernameAndPassword" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user
+        WHERE username = #{username} AND password = #{password}
+    </select>
+
+    <insert id="insert" parameterType="com.energytrading.entity.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user (username, password, blockchain_address, role, balance, status, trust_score, created_time, updated_time)
+        VALUES (#{username}, #{password}, #{blockchainAddress}, #{role}, #{balance}, #{status}, #{trustScore}, NOW(), NOW())
+    </insert>
+
+    <update id="update" parameterType="com.energytrading.entity.User">
+        UPDATE user
+        SET username = #{username},
+            password = #{password},
+            blockchain_address = #{blockchainAddress},
+            role = #{role},
+            balance = #{balance},
+            status = #{status},
+            trust_score = #{trustScore},
+            updated_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE user
+        SET status = #{status},
+            updated_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateTrustScore">
+        UPDATE user
+        SET trust_score = #{trustScore},
+            updated_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateBalance">
+        UPDATE user
+        SET balance = #{balance},
+            updated_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM user WHERE id = #{id}
+    </delete>
+
+</mapper>

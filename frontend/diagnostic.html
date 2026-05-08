@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>前端诊断页面</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .diagnostic-section {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; }
+    h2 { color: #666; margin-top: 0; }
+    .status { padding: 10px; border-radius: 4px; margin: 10px 0; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .info { background: #d1ecf1; color: #0c5460; }
+    ul { padding-left: 20px; }
+    li { margin: 5px 0; }
+    a { color: #667eea; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>🔍 前端诊断页面</h1>
+
+  <div class="diagnostic-section">
+    <h2>✅ 前端服务状态</h2>
+    <div class="status success">前端服务正在运行</div>
+    <p>当前访问地址：<a href="http://localhost:3002/" target="_blank">http://localhost:3002/</a></p>
+  </div>
+
+  <div class="diagnostic-section">
+    <h2>📋 诊断步骤</h2>
+    <ol>
+      <li>点击上面的链接打开应用</li>
+      <li>如果页面空白，按F12打开浏览器开发者工具</li>
+      <li>查看Console标签页是否有红色错误信息</li>
+      <li>查看Network标签页是否有加载失败的资源</li>
+      <li>将错误信息截图或复制发送给我</li>
+    </ol>
+  </div>
+
+  <div class="diagnostic-section">
+    <h2>🔧 常见问题解决</h2>
+    <ul>
+      <li><strong>页面完全空白</strong>：可能是JavaScript错误，检查浏览器控制台</li>
+      <li><strong>样式错乱</strong>：可能是Element Plus未加载，检查网络请求</li>
+      <li><strong>无法登录</strong>：可能是后端未启动或API连接失败</li>
+      <li><strong>组件不显示</strong>：可能是组件导入错误，检查控制台错误</li>
+    </ul>
+  </div>
+
+  <div class="diagnostic-section">
+    <h2>📝 测试清单</h2>
+    <ul>
+      <li>☐ 前端服务正常启动（显示在 http://localhost:3002/）</li>
+      <li>☐ 浏览器能够访问 http://localhost:3002/</li>
+      <li>☐ 页面不是完全空白（至少能看到一些内容）</li>
+      <li>☐ 浏览器控制台没有红色错误信息</li>
+      <li>☐ 能够看到登录界面</li>
+    </ul>
+  </div>
+
+  <div class="diagnostic-section">
+    <h2>🚀 快速测试</h2>
+    <p>如果主应用无法访问，可以尝试以下测试页面：</p>
+    <ul>
+      <li><a href="http://localhost:3002/test.html" target="_blank">简单HTML测试页面</a></li>
+      <li><a href="http://localhost:3002/" target="_blank">Vue应用主页</a></li>
+    </ul>
+  </div>
+
+  <div class="diagnostic-section">
+    <h2>💡 调试建议</h2>
+    <p>如果页面仍然空白，请尝试：</p>
+    <ol>
+      <li>清除浏览器缓存（Ctrl+Shift+Delete）</li>
+      <li>尝试使用无痕/隐私模式打开</li>
+      <li>尝试使用不同的浏览器（Chrome、Firefox、Edge）</li>
+      <li>检查是否有防火墙或安全软件阻止了访问</li>
+    </ol>
+  </div>
+
+  <script>
+    console.log('诊断页面已加载');
+    console.log('当前URL:', window.location.href);
+    console.log('浏览器信息:', navigator.userAgent);
+    
+    // 检查Vue是否可用
+    try {
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/vue@3/dist/vue.global.js';
+      script.onload = () => {
+        console.log('Vue 3 可以从CDN加载');
+        document.getElementById('vue-status').textContent = '✅ Vue 3 可用';
+        document.getElementById('vue-status').className = 'status success';
+      };
+      script.onerror = () => {
+        console.error('Vue 3 CDN加载失败');
+        document.getElementById('vue-status').textContent = '❌ Vue 3 CDN加载失败';
+        document.getElementById('vue-status').className = 'status error';
+      };
+      document.head.appendChild(script);
+    } catch (error) {
+      console.error('Vue加载测试失败:', error);
+    }
+  </script>
+</body>
+</html>

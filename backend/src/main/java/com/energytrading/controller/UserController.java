@@ -1,0 +1,87 @@
+package com.energytrading.controller;
+
+import com.energytrading.common.Result;
+import com.energytrading.dto.UserLoginDTO;
+import com.energytrading.dto.UserRegisterDTO;
+import com.energytrading.entity.User;
+import com.energytrading.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/user")
+@CrossOrigin(origins = "*")
+public class UserController {
+
+    @Autowired
+    private UserService userService;
+
+    @PostMapping("/register")
+    public Result<Map<String, Object>> register(@RequestBody UserRegisterDTO dto) {
+        try {
+            User user = userService.register(dto);
+            return Result.success("注册成功", Map.of(
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "blockchainAddress", user.getBlockchainAddress(),
+                "role", user.getRole(),
+                "balance", user.getBalance()
+            ));
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/login")
+    public Result<Map<String, Object>> login(@RequestBody UserLoginDTO dto) {
+        try {
+            Map<String, Object> user = userService.login(dto);
+            return Result.success("登录成功", user);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}")
+    public Result<User> getUser(@PathVariable Long id) {
+        User user = userService.findById(id);
+        if (user != null) {
+            user.setPassword(null);
+        }
+        return Result.success(user);
+    }
+
+    @GetMapping("/address/{address}")
+    public Result<User> getUserByAddress(@PathVariable String address) {
+        User user = userService.findByBlockchainAddress(address);
+        if (user != null) {
+            user.setPassword(null);
+        }
+        return Result.success(user);
+    }
+
+    @GetMapping("/list")
+    public Result<java.util.List<User>> listAll() {
+        java.util.List<User> users = userService.findAll();
+        users.forEach(u -> u.setPassword(null));
+        return Result.success(users);
+    }
+
+    @PostMapping("/status")
+    public Result<String> updateStatus(@RequestBody Map<String, Object> params) {
+        Long id = Long.valueOf(params.get("id").toString());
+        Integer status = Integer.valueOf(params.get("status").toString());
+        userService.updateStatus(id, status);
+        return Result.success("更新状态成功");
+    }
+
+    @PostMapping("/trust")
+    public Result<String> updateTrustScore(@RequestBody Map<String, Object> params) {
+        Long id = Long.valueOf(params.get("id").toString());
+        Integer score = Integer.valueOf(params.get("trustScore").toString());
+        userService.updateTrustScore(id, score);
+        return Result.success("更新信用分成功");
+    }
+}

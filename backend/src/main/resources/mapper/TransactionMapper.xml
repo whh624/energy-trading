@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.energytrading.mapper.TransactionMapper">
+
+    <resultMap id="BaseResultMap" type="com.energytrading.entity.Transaction">
+        <id column="id" property="id"/>
+        <result column="tx_hash" property="txHash"/>
+        <result column="order_id" property="orderId"/>
+        <result column="buyer_address" property="buyerAddress"/>
+        <result column="buyer_name" property="buyerName"/>
+        <result column="seller_address" property="sellerAddress"/>
+        <result column="seller_name" property="sellerName"/>
+        <result column="amount" property="amount"/>
+        <result column="total_price" property="totalPrice"/>
+        <result column="timestamp" property="timestamp"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        t.id, t.tx_hash, t.order_id, 
+        t.buyer_address, ub.username as buyer_name,
+        t.seller_address, us.username as seller_name,
+        t.amount, t.total_price, t.timestamp
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM transaction t
+        LEFT JOIN user ub ON t.buyer_address = ub.blockchain_address
+        LEFT JOIN user us ON t.seller_address = us.blockchain_address
+        WHERE t.id = #{id}
+    </select>
+
+    <select id="selectByTxHash" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM transaction t
+        LEFT JOIN user ub ON t.buyer_address = ub.blockchain_address
+        LEFT JOIN user us ON t.seller_address = us.blockchain_address
+        WHERE t.tx_hash = #{txHash}
+    </select>
+
+    <select id="selectByBuyerAddress" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM transaction t
+        LEFT JOIN user ub ON t.buyer_address = ub.blockchain_address
+        LEFT JOIN user us ON t.seller_address = us.blockchain_address
+        WHERE t.buyer_address = #{buyerAddress}
+        ORDER BY t.timestamp DESC
+    </select>
+
+    <select id="selectBySellerAddress" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM transaction t
+        LEFT JOIN user ub ON t.buyer_address = ub.blockchain_address
+        LEFT JOIN user us ON t.seller_address = us.blockchain_address
+        WHERE t.seller_address = #{sellerAddress}
+        ORDER BY t.timestamp DESC
+    </select>
+
+    <select id="selectByUserAddress" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM transaction t
+        LEFT JOIN user ub ON t.buyer_address = ub.blockchain_address
+        LEFT JOIN user us ON t.seller_address = us.blockchain_address
+        WHERE t.buyer_address = #{userAddress} OR t.seller_address = #{userAddress}
+        ORDER BY t.timestamp DESC
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM transaction t
+        LEFT JOIN user ub ON t.buyer_address = ub.blockchain_address
+        LEFT JOIN user us ON t.seller_address = us.blockchain_address
+        ORDER BY t.timestamp DESC
+    </select>
+
+    <insert id="insert" parameterType="com.energytrading.entity.Transaction" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO transaction (tx_hash, order_id, buyer_address, seller_address, amount, total_price, timestamp)
+        VALUES (#{txHash}, #{orderId}, #{buyerAddress}, #{sellerAddress}, #{amount}, #{totalPrice}, #{timestamp})
+    </insert>
+
+    <delete id="deleteById">
+        DELETE FROM transaction WHERE id = #{id}
+    </delete>
+
+</mapper>

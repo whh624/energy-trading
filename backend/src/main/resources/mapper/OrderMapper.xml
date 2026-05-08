@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.energytrading.mapper.OrderMapper">
+
+    <resultMap id="BaseResultMap" type="com.energytrading.entity.Order">
+        <id column="id" property="id"/>
+        <result column="order_id_on_chain" property="orderIdOnChain"/>
+        <result column="seller_address" property="sellerAddress"/>
+        <result column="seller_name" property="sellerName"/>
+        <result column="amount" property="amount"/>
+        <result column="price" property="price"/>
+        <result column="status" property="status"/>
+        <result column="created_time" property="createdTime"/>
+        <result column="updated_time" property="updatedTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        o.id, o.order_id_on_chain, o.seller_address, u.username as seller_name, o.amount, o.price, o.status, o.created_time, o.updated_time
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM energy_orders o
+        LEFT JOIN user u ON o.seller_address = u.blockchain_address
+        WHERE o.id = #{id}
+    </select>
+
+    <select id="selectByOrderIdOnChain" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM energy_orders o
+        LEFT JOIN user u ON o.seller_address = u.blockchain_address
+        WHERE o.order_id_on_chain = #{orderIdOnChain}
+    </select>
+
+    <select id="selectByStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM energy_orders o
+        LEFT JOIN user u ON o.seller_address = u.blockchain_address
+        WHERE o.status = #{status}
+        ORDER BY o.created_time DESC
+    </select>
+
+    <select id="selectBySellerAddress" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM energy_orders o
+        LEFT JOIN user u ON o.seller_address = u.blockchain_address
+        WHERE o.seller_address = #{sellerAddress}
+        ORDER BY o.created_time DESC
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM energy_orders o
+        LEFT JOIN user u ON o.seller_address = u.blockchain_address
+        ORDER BY o.created_time DESC
+    </select>
+
+    <insert id="insert" parameterType="com.energytrading.entity.Order" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO energy_orders (order_id_on_chain, seller_address, amount, price, status, created_time, updated_time)
+        VALUES (#{orderIdOnChain}, #{sellerAddress}, #{amount}, #{price}, #{status}, NOW(), NOW())
+    </insert>
+
+    <update id="update" parameterType="com.energytrading.entity.Order">
+        UPDATE energy_orders
+        SET order_id_on_chain = #{orderIdOnChain},
+            seller_address = #{sellerAddress},
+            amount = #{amount},
+            price = #{price},
+            status = #{status},
+            updated_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE energy_orders
+        SET status = #{status},
+            updated_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateAmount">
+        UPDATE energy_orders
+        SET amount = #{amount},
+            updated_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM energy_orders WHERE id = #{id}
+    </delete>
+
+</mapper>
