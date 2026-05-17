@@ -102,6 +102,10 @@
                             <el-icon><Monitor /></el-icon>
                             <span>全网监控</span>
                         </el-menu-item>
+                        <el-menu-item index="/dashboard/admin/logs" v-if="userStore.role === 3">
+                            <el-icon><Notebook /></el-icon>
+                            <span>操作日志</span>
+                        </el-menu-item>
                     </el-menu>
                 </div>
             </aside>

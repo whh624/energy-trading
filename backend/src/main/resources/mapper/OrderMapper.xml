@@ -21,21 +21,21 @@
     <select id="selectById" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM energy_orders o
-        LEFT JOIN user u ON o.seller_address = u.blockchain_address
+        LEFT JOIN user u ON LOWER(o.seller_address) = LOWER(u.blockchain_address)
         WHERE o.id = #{id}
     </select>
 
     <select id="selectByOrderIdOnChain" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM energy_orders o
-        LEFT JOIN user u ON o.seller_address = u.blockchain_address
+        LEFT JOIN user u ON LOWER(o.seller_address) = LOWER(u.blockchain_address)
         WHERE o.order_id_on_chain = #{orderIdOnChain}
     </select>
 
     <select id="selectByStatus" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM energy_orders o
-        LEFT JOIN user u ON o.seller_address = u.blockchain_address
+        LEFT JOIN user u ON LOWER(o.seller_address) = LOWER(u.blockchain_address)
         WHERE o.status = #{status}
         ORDER BY o.created_time DESC
     </select>
@@ -43,7 +43,7 @@
     <select id="selectBySellerAddress" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM energy_orders o
-        LEFT JOIN user u ON o.seller_address = u.blockchain_address
+        LEFT JOIN user u ON LOWER(o.seller_address) = LOWER(u.blockchain_address)
         WHERE o.seller_address = #{sellerAddress}
         ORDER BY o.created_time DESC
     </select>
@@ -51,13 +51,13 @@
     <select id="selectAll" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM energy_orders o
-        LEFT JOIN user u ON o.seller_address = u.blockchain_address
+        LEFT JOIN user u ON LOWER(o.seller_address) = LOWER(u.blockchain_address)
         ORDER BY o.created_time DESC
     </select>
 
     <insert id="insert" parameterType="com.energytrading.entity.Order" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO energy_orders (order_id_on_chain, seller_address, amount, price, status, created_time, updated_time)
-        VALUES (#{orderIdOnChain}, #{sellerAddress}, #{amount}, #{price}, #{status}, NOW(), NOW())
+        INSERT INTO energy_orders (order_id_on_chain, seller_address, amount, price, status, is_abnormal, created_time, updated_time)
+        VALUES (#{orderIdOnChain}, #{sellerAddress}, #{amount}, #{price}, #{status}, #{isAbnormal}, NOW(), NOW())
     </insert>
 
     <update id="update" parameterType="com.energytrading.entity.Order">
@@ -67,6 +67,7 @@
             amount = #{amount},
             price = #{price},
             status = #{status},
+            is_abnormal = #{isAbnormal},
             updated_time = NOW()
         WHERE id = #{id}
     </update>
@@ -81,6 +82,19 @@
     <update id="updateAmount">
         UPDATE energy_orders
         SET amount = #{amount},
+            updated_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 新增：获取所有开放订单的平均价格 -->
+    <select id="selectAveragePrice" resultType="java.lang.Double">
+        SELECT AVG(price) FROM energy_orders WHERE status = 0
+    </select>
+
+    <!-- 新增：更新订单的异常状态 -->
+    <update id="updateIsAbnormal">
+        UPDATE energy_orders
+        SET is_abnormal = #{isAbnormal},
             updated_time = NOW()
         WHERE id = #{id}
     </update>

@@ -153,6 +153,71 @@
                 </el-col>
             </el-row>
 
+            <el-row :gutter="20" style="margin-top: 20px;">
+                <el-col :span="12">
+                    <div class="card-container">
+                        <div class="card-title">冻结合约余额</div>
+                        <div style="color: #909399; font-size: 13px; margin-bottom: 16px;">
+                            冻结后的余额可在购电时优先抵扣，无需每次都从钱包全额支付。
+                        </div>
+                        <el-form label-width="80px">
+                            <el-form-item label="冻结金额">
+                                <el-input-number
+                                    v-model="freezeAmount"
+                                    :min="0.001"
+                                    :max="parseFloat(contractBalance.available) || 0"
+                                    :precision="4"
+                                    :step="0.01"
+                                    style="width: 100%"
+                                />
+                                <span style="margin-left: 10px; color: #909399;">ETH</span>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-button
+                                    type="info"
+                                    :loading="freezeLoading"
+                                    @click="handleFreeze"
+                                    style="width: 100%"
+                                >
+                                    冻结余额
+                                </el-button>
+                            </el-form-item>
+                        </el-form>
+                    </div>
+                </el-col>
+                <el-col :span="12">
+                    <div class="card-container">
+                        <div class="card-title">解冻合约余额</div>
+                        <div style="color: #909399; font-size: 13px; margin-bottom: 16px;">
+                            解冻后会回到可用余额，可继续提款或再次调整冻结金额。
+                        </div>
+                        <el-form label-width="80px">
+                            <el-form-item label="解冻金额">
+                                <el-input-number
+                                    v-model="unfreezeAmount"
+                                    :min="0.001"
+                                    :max="parseFloat(contractBalance.frozen) || 0"
+                                    :precision="4"
+                                    :step="0.01"
+                                    style="width: 100%"
+                                />
+                                <span style="margin-left: 10px; color: #909399;">ETH</span>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-button
+                                    type="success"
+                                    :loading="unfreezeLoading"
+                                    @click="handleUnfreeze"
+                                    style="width: 100%"
+                                >
+                                    解冻余额
+                                </el-button>
+                            </el-form-item>
+                        </el-form>
+                    </div>
+                </el-col>
+            </el-row>
+
             <div class="card-container" style="margin-top: 20px;">
                 <div class="card-title">交易记录</div>
                 <el-table :data="recentTxs" style="width: 100%">
@@ -211,8 +276,12 @@ const walletStore = useWalletStore()
 
 const depositAmount = ref(0.01)
 const withdrawAmount = ref(0.01)
+const freezeAmount = ref(0.01)
+const unfreezeAmount = ref(0.01)
 const depositLoading = ref(false)
 const withdrawLoading = ref(false)
+const freezeLoading = ref(false)
+const unfreezeLoading = ref(false)
 const contractBalance = reactive({ available: '0.0000', frozen: '0.0000' })
 const recentTxs = ref([])
 
@@ -296,6 +365,54 @@ const handleWithdraw = async () => {
     }
 }
 
+const handleFreeze = async () => {
+    if (freezeAmount.value <= 0) {
+        ElMessage.warning('请输入有效的冻结金额')
+        return
+    }
+    freezeLoading.value = true
+    try {
+        const result = await walletStore.freezeBalanceOnChain(freezeAmount.value)
+        ElMessage.success(`冻结成功！交易哈希: ${result.txHash.substring(0, 10)}...`)
+        recentTxs.value.unshift({
+            txHash: result.txHash,
+            type: '冻结',
+            blockNumber: result.blockNumber,
+            gasUsed: result.gasUsed,
+            time: new Date().toLocaleString('zh-CN')
+        })
+        await refreshBalance()
+    } catch (error) {
+        ElMessage.error('冻结失败: ' + (error.reason || error.message))
+    } finally {
+        freezeLoading.value = false
+    }
+}
+
+const handleUnfreeze = async () => {
+    if (unfreezeAmount.value <= 0) {
+        ElMessage.warning('请输入有效的解冻金额')
+        return
+    }
+    unfreezeLoading.value = true
+    try {
+        const result = await walletStore.unfreezeBalanceOnChain(unfreezeAmount.value)
+        ElMessage.success(`解冻成功！交易哈希: ${result.txHash.substring(0, 10)}...`)
+        recentTxs.value.unshift({
+            txHash: result.txHash,
+            type: '解冻',
+            blockNumber: result.blockNumber,
+            gasUsed: result.gasUsed,
+            time: new Date().toLocaleString('zh-CN')
+        })
+        await refreshBalance()
+    } catch (error) {
+        ElMessage.error('解冻失败: ' + (error.reason || error.message))
+    } finally {
+        unfreezeLoading.value = false
+    }
+}
+
 const refreshBalance = async () => {
     await walletStore.updateBalance()
     try {
@@ -331,6 +448,8 @@ const handleDisconnect = async () => {
 const getTxTypeTag = (type) => {
     switch (type) {
         case '存款': return 'success'
+        case '冻结': return 'info'
+        case '解冻': return 'success'
         case '提款': return 'warning'
         case '创建挂单': return 'primary'
         case '购买电量': return 'success'

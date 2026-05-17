@@ -60,6 +60,23 @@
                         </template>
                     </el-input>
                 </el-form-item>
+
+                <el-form-item>
+                    <div class="wallet-panel">
+                        <div class="wallet-panel__header">钱包地址</div>
+                        <div class="wallet-panel__address">
+                            {{ walletStore.isConnected ? walletStore.account : '请先连接 MetaMask 钱包' }}
+                        </div>
+                        <el-button
+                            type="primary"
+                            plain
+                            :loading="walletStore.isConnecting"
+                            @click="handleConnectWallet"
+                        >
+                            {{ walletStore.isConnected ? '重新连接钱包' : '连接 MetaMask' }}
+                        </el-button>
+                    </div>
+                </el-form-item>
                 
                 <el-form-item prop="role">
                     <div class="role-selector">
@@ -119,10 +136,12 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { useWalletStore } from '../stores/wallet'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const userStore = useUserStore()
+const walletStore = useWalletStore()
 
 const registerFormRef = ref(null)
 const loading = ref(false)
@@ -161,22 +180,45 @@ const rules = {
     ]
 }
 
+const handleConnectWallet = async () => {
+    try {
+        await walletStore.connectWallet()
+        ElMessage.success('钱包连接成功')
+    } catch (error) {
+        ElMessage.error(error.message || '钱包连接失败')
+    }
+}
+
 const handleRegister = async () => {
     if (!registerFormRef.value) return
     
     await registerFormRef.value.validate(async (valid) => {
         if (valid) {
             loading.value = true
-            
-            const blockchainAddress = '0x' + Array.from({length: 40}, () => 
-                Math.floor(Math.random() * 16).toString(16)
-            ).join('')
-            
+
+            let blockchainAddress = null; // Default to null
+
+            if (registerForm.role === 3) { // 管理方
+                // For admin, blockchainAddress is optional. If connected, use it.
+                if (walletStore.isConnected && walletStore.account) {
+                    blockchainAddress = walletStore.account;
+                }
+                // If not connected, blockchainAddress remains null, which is allowed for admin.
+            } else { // 产电方 or 用电方
+                // For other roles, blockchainAddress is mandatory.
+                if (!walletStore.isConnected || !walletStore.account) {
+                    loading.value = false;
+                    ElMessage.error('请先连接 MetaMask 钱包后再注册');
+                    return;
+                }
+                blockchainAddress = walletStore.account;
+            }
+
             const result = await userStore.register({
                 username: registerForm.username,
                 password: registerForm.password,
                 role: registerForm.role,
-                blockchainAddress: blockchainAddress
+                blockchainAddress: blockchainAddress // Pass the determined address
             })
             
             loading.value = false
@@ -197,6 +239,27 @@ const goToLogin = () => {
 </script>
 
 <style scoped>
+.wallet-panel {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid #e4e7ed;
+    border-radius: 12px;
+    background: #fafafa;
+}
+
+.wallet-panel__header {
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #909399;
+}
+
+.wallet-panel__address {
+    margin-bottom: 12px;
+    color: #303133;
+    font-size: 14px;
+    word-break: break-all;
+}
+
 .role-selector {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

@@ -22,9 +22,10 @@
                 <el-form-item label="出售电量" prop="amount">
                     <el-input-number 
                         v-model="orderForm.amount" 
-                        :min="0.1" 
+                        :min="1" 
                         :max="10000"
-                        :precision="2"
+                        :precision="0"
+                        :step="1"
                         style="width: 100%"
                     />
                     <span style="margin-left: 10px; color: #909399;">kWh</span>
@@ -79,6 +80,7 @@
                 <ul style="margin: 0; padding-left: 20px;">
                     <li>链上交易将通过MetaMask签名并提交到区块链</li>
                     <li>链下交易仅在数据库中记录，不实际上链</li>
+                    <li>当前链上电量单位按整数 kWh 处理，请输入整数电量</li>
                     <li>用电用户可以购买您的挂单</li>
                     <li>您可以随时取消未成交的挂单</li>
                     <li>交易完成后资金将自动转入您的账户</li>
@@ -133,6 +135,29 @@ const handleSubmit = async () => {
     })
 }
 
+const validateWalletOwnership = async () => {
+    if (!walletStore.account) {
+        throw new Error('请先连接MetaMask钱包')
+    }
+
+    const response = await axios.get(`/api/user/address/${encodeURIComponent(walletStore.account)}`)
+    const walletUser = response.data?.data
+
+    if (!walletUser) {
+        throw new Error('当前 MetaMask 地址未注册，请先使用该地址注册账户')
+    }
+
+    if (!userStore.userInfo?.id) {
+        throw new Error('当前登录信息已失效，请重新登录后再试')
+    }
+
+    if (walletUser.id !== userStore.userInfo.id) {
+        throw new Error('当前 MetaMask 地址不属于当前登录账户，请切换到该账户绑定的钱包地址')
+    }
+
+    return walletUser.blockchainAddress || walletStore.account
+}
+
 const handleOnChainCreate = async () => {
     if (!walletStore.isConnected) {
         ElMessage.warning('请先连接MetaMask钱包')
@@ -141,6 +166,7 @@ const handleOnChainCreate = async () => {
 
     loading.value = true
     try {
+        const sellerAddress = await validateWalletOwnership()
         const priceWei = Math.floor(orderForm.priceEth * 1e18)
 
         const chainResult = await walletStore.createOrderOnChain(
@@ -151,7 +177,8 @@ const handleOnChainCreate = async () => {
         const response = await axios.post('/api/order/create', {
             amount: orderForm.amount,
             price: priceWei,
-            sellerAddress: walletStore.account,
+            sellerAddress,
+            orderIdOnChain: Number(chainResult.orderIdOnChain),
             txHash: chainResult.txHash,
             blockNumber: chainResult.blockNumber
         })
@@ -175,6 +202,11 @@ const handleOnChainCreate = async () => {
 }
 
 const handleOffChainCreate = async () => {
+    if (!userStore.blockchainAddress) {
+        ElMessage.error('当前账户未绑定区块链地址，请先完成注册或重新登录')
+        return
+    }
+
     loading.value = true
     try {
         const priceWei = Math.floor(orderForm.priceEth * 1e18)

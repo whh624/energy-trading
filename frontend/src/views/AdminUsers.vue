@@ -116,7 +116,9 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '../stores/user'
 
+const userStore = useUserStore()
 const users = ref([])
 const loading = ref(false)
 const searchQuery = ref('')
@@ -177,11 +179,15 @@ const toggleStatus = (user) => {
         try {
             const response = await axios.post('/api/user/status', {
                 id: user.id,
-                status: user.status === 0 ? 1 : 0
+                status: user.status === 0 ? 1 : 0,
+                operatorId: userStore.userInfo.id,
+                operatorName: userStore.userInfo.username
             })
             if (response.data.code === 200) {
                 ElMessage.success(`${action}成功`)
                 fetchUsers()
+            } else {
+                ElMessage.error(response.data.message)
             }
         } catch (error) {
             ElMessage.error(`${action}失败`)
@@ -190,9 +196,30 @@ const toggleStatus = (user) => {
 }
 
 const editTrust = (user) => {
-    currentUser.value = user
-    newTrustScore.value = user.trustScore
-    trustDialogVisible.value = true
+    ElMessageBox.prompt('请输入新的信用分 (0-100)', '修改信用评分', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputPattern: /^(?:100|[1-9]?[0-9])$/,
+        inputErrorMessage: '请输入0-100之间的整数',
+        inputValue: user.trustScore.toString()
+    }).then(async ({ value }) => {
+        try {
+            const response = await axios.post('/api/user/trust', {
+                id: user.id,
+                trustScore: parseInt(value),
+                operatorId: userStore.userInfo.id,
+                operatorName: userStore.userInfo.username
+            })
+            if (response.data.code === 200) {
+                ElMessage.success('评分修改成功')
+                fetchUsers()
+            } else {
+                ElMessage.error(response.data.message)
+            }
+        } catch (error) {
+            ElMessage.error('评分修改失败')
+        }
+    })
 }
 
 const submitTrust = async () => {

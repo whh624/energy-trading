@@ -15,6 +15,8 @@ export const useUserStore = defineStore('user', () => {
     })
     const blockchainAddress = computed(() => userInfo.value?.blockchainAddress || '')
     const balance = computed(() => userInfo.value?.balance || 0)
+    const status = computed(() => userInfo.value?.status ?? 0)
+    const trustScore = computed(() => userInfo.value?.trustScore ?? 100)
     
     async function login(loginData) {
         try {
@@ -35,6 +37,28 @@ export const useUserStore = defineStore('user', () => {
             const response = await axios.post('/api/user/register', registerData)
             if (response.data.code === 200) {
                 return { success: true, message: '注册成功', data: response.data.data }
+            }
+            return { success: false, message: response.data.message }
+        } catch (error) {
+            return { success: false, message: error.response?.data?.message || error.message }
+        }
+    }
+
+    async function updateWalletAddress(id, blockchainAddress) {
+        try {
+            const response = await axios.post('/api/user/wallet-address', {
+                id,
+                blockchainAddress
+            })
+            if (response.data.code === 200) {
+                if (userInfo.value) {
+                    userInfo.value = {
+                        ...userInfo.value,
+                        ...response.data.data
+                    }
+                    localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+                }
+                return { success: true, message: response.data.message, data: response.data.data }
             }
             return { success: false, message: response.data.message }
         } catch (error) {
@@ -65,8 +89,11 @@ export const useUserStore = defineStore('user', () => {
         roleName,
         blockchainAddress,
         balance,
+        status,
+        trustScore,
         login,
         register,
+        updateWalletAddress,
         logout,
         updateBalance
     }

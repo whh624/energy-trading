@@ -187,14 +187,14 @@ contract EnergyTradingPlatform {
         emit OrderCancelled(_orderId);
     }
 
-    function getOrder(uint256 _orderId) external view returns (
+    function getOrder(uint256 _orderId) external view orderExists(_orderId) returns (
         uint256 id,
         address seller,
         uint256 amount,
         uint256 price,
         OrderStatus status,
         uint256 createdAt
-    ) orderExists(_orderId) {
+    ) {
         Order storage order = orders[_orderId];
         return (
             order.id,
@@ -210,7 +210,7 @@ contract EnergyTradingPlatform {
         return userTransactions[_user];
     }
 
-    function getTransaction(uint256 _transactionId) external view returns (
+    function getTransaction(uint256 _transactionId) external view transactionExists(_transactionId) returns (
         uint256 id,
         uint256 orderId,
         address buyer,
@@ -218,7 +218,7 @@ contract EnergyTradingPlatform {
         uint256 amount,
         uint256 totalPrice,
         uint256 timestamp
-    ) transactionExists(_transactionId) {
+    ) {
         Transaction storage transaction = transactions[_transactionId];
         return (
             transaction.id,

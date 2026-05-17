@@ -11,6 +11,10 @@ public class Order {
     private Long price;
     private Integer status;
     private String statusName;
+    private Boolean isAbnormal = false; // 新增字段，是否异常订单，默认为 false
+
+    public Boolean getIsAbnormal() { return isAbnormal; }
+    public void setIsAbnormal(Boolean isAbnormal) { this.isAbnormal = isAbnormal; }
     private LocalDateTime createdTime;
     private LocalDateTime updatedTime;
 

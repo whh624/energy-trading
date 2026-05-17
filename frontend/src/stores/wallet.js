@@ -4,10 +4,35 @@ import { ethers } from 'ethers'
 
 const CONTRACT_ABI = [
     {
+        "anonymous": false,
+        "inputs": [
+            {"indexed": false, "name": "orderId", "type": "uint256"},
+            {"indexed": false, "name": "seller", "type": "address"},
+            {"indexed": false, "name": "amount", "type": "uint256"},
+            {"indexed": false, "name": "price", "type": "uint256"}
+        ],
+        "name": "OrderCreated",
+        "type": "event"
+    },
+    {
         "inputs": [],
         "name": "deposit",
         "outputs": [],
         "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "amount", "type": "uint256"}],
+        "name": "freezeBalance",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "amount", "type": "uint256"}],
+        "name": "unfreezeBalance",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
     },
     {
@@ -77,7 +102,7 @@ const CONTRACT_ABI = [
     }
 ]
 
-const CONTRACT_ADDRESS = '0xcCb2B123360a071c2D157a8344073Cd0ab1236eb'
+const CONTRACT_ADDRESS = '0x3e85B795BD87d0E10d9aac9a910Ecee2609Af476'
 const GANACHE_RPC_URL = 'http://localhost:7545'
 
 export const useWalletStore = defineStore('wallet', () => {
@@ -225,7 +250,15 @@ export const useWalletStore = defineStore('wallet', () => {
                 }
             )
             const receipt = await tx.wait(1)
+            const orderCreatedEvent = receipt.events?.find((event) => event.event === 'OrderCreated')
+            const orderIdOnChain = orderCreatedEvent?.args?.orderId?.toString()
+
+            if (!orderIdOnChain) {
+                throw new Error('未能从交易回执中解析链上订单ID')
+            }
+
             return {
+                orderIdOnChain,
                 txHash: receipt.transactionHash,
                 blockNumber: receipt.blockNumber,
                 gasUsed: receipt.gasUsed.toString()
@@ -241,7 +274,7 @@ export const useWalletStore = defineStore('wallet', () => {
         }
     }
 
-    async function buyEnergyOnChain(orderId, amount, priceWei) {
+    async function buyEnergyOnChain(orderId, amount, priceWei, directPaymentWei = priceWei) {
         if (!contract.value) throw new Error('钱包未连接')
 
         try {
@@ -249,7 +282,7 @@ export const useWalletStore = defineStore('wallet', () => {
                 orderId,
                 ethers.utils.parseUnits(amount.toString(), 0),
                 {
-                    value: priceWei,
+                    value: directPaymentWei,
                     gasLimit: 3000000
                 }
             )
@@ -266,6 +299,8 @@ export const useWalletStore = defineStore('wallet', () => {
                 throw new Error('交易已在处理中，请稍候')
             } else if (error.message && error.message.includes('insufficient funds')) {
                 throw new Error('账户余额不足')
+            } else if ((error.reason || error.message || '').includes('Insufficient frozen balance')) {
+                throw new Error('冻结余额不足，请先在钱包页面冻结足够金额')
             } else {
                 throw new Error('链上交易失败: ' + (error.reason || error.message))
             }
@@ -320,6 +355,75 @@ export const useWalletStore = defineStore('wallet', () => {
             } else {
                 throw new Error('链上交易失败: ' + (error.reason || error.message))
             }
+        }
+    }
+
+    async function freezeBalanceOnChain(amountEth) {
+        if (!contract.value) throw new Error('钱包未连接')
+
+        try {
+            const amountWei = ethers.utils.parseEther(amountEth.toString())
+            const tx = await contract.value.freezeBalance(amountWei, {
+                gasLimit: 3000000
+            })
+            const receipt = await tx.wait(1)
+            return {
+                txHash: receipt.transactionHash,
+                blockNumber: receipt.blockNumber,
+                gasUsed: receipt.gasUsed.toString()
+            }
+        } catch (error) {
+            if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
+                throw new Error('用户取消了交易')
+            } else if (error.code === -32002) {
+                throw new Error('交易已在处理中，请稍候')
+            } else if ((error.reason || '').includes('Insufficient available balance')) {
+                throw new Error('合约可用余额不足')
+            } else {
+                throw new Error('链上交易失败: ' + (error.reason || error.message))
+            }
+        }
+    }
+
+    async function unfreezeBalanceOnChain(amountEth) {
+        if (!contract.value) throw new Error('钱包未连接')
+
+        try {
+            const amountWei = ethers.utils.parseEther(amountEth.toString())
+            const tx = await contract.value.unfreezeBalance(amountWei, {
+                gasLimit: 3000000
+            })
+            const receipt = await tx.wait(1)
+            return {
+                txHash: receipt.transactionHash,
+                blockNumber: receipt.blockNumber,
+                gasUsed: receipt.gasUsed.toString()
+            }
+        } catch (error) {
+            if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
+                throw new Error('用户取消了交易')
+            } else if (error.code === -32002) {
+                throw new Error('交易已在处理中，请稍候')
+            } else if ((error.reason || '').includes('Insufficient frozen balance')) {
+                throw new Error('冻结余额不足')
+            } else {
+                throw new Error('链上交易失败: ' + (error.reason || error.message))
+            }
+        }
+    }
+
+    async function getContractBalanceRaw(userAddress) {
+        if (!contract.value) throw new Error('钱包未连接')
+
+        try {
+            const [available, frozen] = await contract.value.getBalance(userAddress)
+            return {
+                available,
+                frozen
+            }
+        } catch (error) {
+            console.error('获取合约原始余额失败:', error)
+            throw new Error('获取合约余额失败: ' + (error.message || '未知错误'))
         }
     }
 
@@ -401,8 +505,11 @@ export const useWalletStore = defineStore('wallet', () => {
         buyEnergyOnChain,
         cancelOrderOnChain,
         depositOnChain,
+        freezeBalanceOnChain,
+        unfreezeBalanceOnChain,
         withdrawOnChain,
         getContractBalance,
+        getContractBalanceRaw,
         signMessage,
         cleanup
     }

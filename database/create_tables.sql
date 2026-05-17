@@ -13,15 +13,15 @@ CREATE TABLE user (
   id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '用户ID',
   username VARCHAR(50) NOT NULL COMMENT '用户名',
   password VARCHAR(100) NOT NULL COMMENT '密码(MD5加密)',
-  blockchain_address VARCHAR(100) NOT NULL COMMENT '区块链地址',
+  blockchain_address VARCHAR(100) NULL COMMENT '区块链地址',
   role INT DEFAULT 0 COMMENT '角色: 0-普通用户, 1-产电用户, 2-用电用户, 3-管理方',
   balance DOUBLE DEFAULT 1000.0 COMMENT '账户余额',
   status INT DEFAULT 0 COMMENT '状态: 0-正常, 1-冻结',
   trust_score INT DEFAULT 100 COMMENT '信用分',
   created_time DATETIME NOT NULL COMMENT '创建时间',
   updated_time DATETIME NOT NULL COMMENT '更新时间',
-  UNIQUE KEY uk_username (username),
-  UNIQUE KEY uk_blockchain_address (blockchain_address)
+  UNIQUE KEY uk_username (username)
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- 创建订单表
@@ -32,6 +32,7 @@ CREATE TABLE energy_orders (
   amount DOUBLE NOT NULL COMMENT '电量(kWh)',
   price BIGINT NOT NULL COMMENT '单价(Wei/kWh)',
   status INT NOT NULL DEFAULT 0 COMMENT '状态: 0-开放中, 1-已完成, 2-已取消',
+  is_abnormal TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否异常订单: 0-否, 1-是',
   created_time DATETIME NOT NULL COMMENT '创建时间',
   updated_time DATETIME NOT NULL COMMENT '更新时间',
   INDEX idx_seller_address (seller_address),
@@ -52,6 +53,20 @@ CREATE TABLE transaction (
   INDEX idx_buyer_address (buyer_address),
   INDEX idx_seller_address (seller_address)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='交易记录表';
+
+-- 创建操作日志表
+CREATE TABLE operation_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '日志ID',
+  operator_id BIGINT NOT NULL COMMENT '操作人ID',
+  operator_name VARCHAR(50) NOT NULL COMMENT '操作人姓名',
+  target_id BIGINT NOT NULL COMMENT '被操作对象ID',
+  target_name VARCHAR(50) NOT NULL COMMENT '被操作对象名称',
+  operation_type VARCHAR(50) NOT NULL COMMENT '操作类型(如: 冻结账户, 解冻账户, 修改评分)',
+  operation_detail TEXT COMMENT '详细描述',
+  created_time DATETIME NOT NULL COMMENT '操作时间',
+  INDEX idx_operator_id (operator_id),
+  INDEX idx_target_id (target_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员操作日志表';
 
 -- 插入测试数据
 INSERT INTO user (username, password, blockchain_address, role, balance, status, trust_score, created_time, updated_time) VALUES

@@ -18,7 +18,7 @@
                     </el-tag>
                 </el-descriptions-item>
                 <el-descriptions-item label="区块链地址" :span="2">
-                    <el-input :value="userStore.blockchainAddress" readonly>
+                    <el-input :value="userStore.blockchainAddress || '暂未绑定钱包地址'" readonly>
                         <template #append>
                             <el-button @click="copyAddress">
                                 复制
@@ -81,6 +81,12 @@
 
         <div class="card-container" style="max-width: 800px; margin-top: 20px;">
             <div class="card-title">MetaMask钱包</div>
+            <el-alert
+                :title="userStore.blockchainAddress ? '可将当前 MetaMask 地址绑定为账户的固定钱包地址。' : '当前账户尚未绑定钱包地址，请先连接 MetaMask 后完成绑定。'"
+                type="info"
+                :closable="false"
+                style="margin-bottom: 16px;"
+            />
             <el-descriptions :column="2" border v-if="walletStore.isConnected">
                 <el-descriptions-item label="钱包地址" :span="2">
                     <div style="display: flex; align-items: center; gap: 10px;">
@@ -99,7 +105,22 @@
             </el-descriptions>
             <div v-else class="wallet-not-connected">
                 <p>钱包未连接</p>
-                <el-button type="primary" @click="goToWallet">前往钱包管理</el-button>
+                <el-button type="primary" :loading="bindingLoading" @click="connectWallet">
+                    连接 MetaMask
+                </el-button>
+            </div>
+            <div class="wallet-actions">
+                <el-button
+                    v-if="walletStore.isConnected"
+                    type="primary"
+                    :loading="bindingLoading"
+                    @click="bindWalletAddress"
+                >
+                    {{ userStore.blockchainAddress ? '更换绑定钱包地址' : '绑定当前钱包地址' }}
+                </el-button>
+                <span class="wallet-tip">
+                    当前绑定地址：{{ userStore.blockchainAddress || '未绑定' }}
+                </span>
             </div>
         </div>
         
@@ -157,22 +178,27 @@
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { useWalletStore } from '../stores/wallet'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
-const router = useRouter()
 const userStore = useUserStore()
 const walletStore = useWalletStore()
 
 const carbonSaved = ref(0)
 const transactions = ref([])
+const bindingLoading = ref(false)
 
 const trustRate = computed(() => (userStore.trustScore || 100) / 20)
 
 const fetchUserHistory = async () => {
+    if (!userStore.blockchainAddress) {
+        transactions.value = []
+        carbonSaved.value = 0
+        return
+    }
+
     try {
         const response = await axios.get(`/api/trade/history/${userStore.blockchainAddress}`)
         if (response.data.code === 200) {
@@ -201,6 +227,10 @@ const roleTagType = computed(() => {
 
 const copyAddress = async () => {
     try {
+        if (!userStore.blockchainAddress) {
+            ElMessage.warning('当前账户尚未绑定钱包地址')
+            return
+        }
         await navigator.clipboard.writeText(userStore.blockchainAddress)
         ElMessage.success('地址已复制到剪贴板')
     } catch (error) {
@@ -217,8 +247,62 @@ const copyWalletAddress = async () => {
     }
 }
 
-const goToWallet = () => {
-    router.push('/dashboard/wallet')
+const connectWallet = async () => {
+    bindingLoading.value = true
+    try {
+        await walletStore.connectWallet()
+        ElMessage.success('MetaMask 连接成功')
+    } catch (error) {
+        ElMessage.error(error.message || '连接钱包失败')
+    } finally {
+        bindingLoading.value = false
+    }
+}
+
+const bindWalletAddress = async () => {
+    if (!userStore.userInfo?.id) {
+        ElMessage.error('当前登录信息已失效，请重新登录')
+        return
+    }
+
+    if (!walletStore.isConnected || !walletStore.account) {
+        ElMessage.warning('请先连接 MetaMask 钱包')
+        return
+    }
+
+    const hasBoundAddress = !!userStore.blockchainAddress
+    const isChangingAddress = hasBoundAddress
+        && userStore.blockchainAddress.toLowerCase() !== walletStore.account.toLowerCase()
+
+    if (isChangingAddress) {
+        try {
+            await ElMessageBox.confirm(
+                `当前账户已绑定地址：${userStore.blockchainAddress}\n即将更换为：${walletStore.account}\n\n更换后，个人中心中的交易历史、碳减排统计等按地址查询的数据将切换为新地址，旧地址相关记录不会自动迁移。`,
+                '确认更换钱包地址',
+                {
+                    confirmButtonText: '确认更换',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }
+            )
+        } catch (error) {
+            return
+        }
+    }
+
+    bindingLoading.value = true
+    try {
+        const result = await userStore.updateWalletAddress(userStore.userInfo.id, walletStore.account)
+        if (!result.success) {
+            ElMessage.error(result.message || '绑定钱包地址失败')
+            return
+        }
+
+        await fetchUserHistory()
+        ElMessage.success(result.message || '钱包地址更新成功')
+    } finally {
+        bindingLoading.value = false
+    }
 }
 
 const formatTime = (time) => {
@@ -271,5 +355,18 @@ const formatTime = (time) => {
 
 .wallet-not-connected p {
     margin-bottom: 15px;
+}
+
+.wallet-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.wallet-tip {
+    color: #909399;
+    font-size: 13px;
 }
 </style>

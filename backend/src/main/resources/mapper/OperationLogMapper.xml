@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.energytrading.mapper.OperationLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.energytrading.entity.OperationLog">
+        <id column="id" property="id"/>
+        <result column="operator_id" property="operatorId"/>
+        <result column="operator_name" property="operatorName"/>
+        <result column="target_id" property="targetId"/>
+        <result column="target_name" property="targetName"/>
+        <result column="operation_type" property="operationType"/>
+        <result column="operation_detail" property="operationDetail"/>
+        <result column="created_time" property="createdTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, operator_id, operator_name, target_id, target_name, operation_type, operation_detail, created_time
+    </sql>
+
+    <insert id="insert" parameterType="com.energytrading.entity.OperationLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO operation_log (operator_id, operator_name, target_id, target_name, operation_type, operation_detail, created_time)
+        VALUES (#{operatorId}, #{operatorName}, #{targetId}, #{targetName}, #{operationType}, #{operationDetail}, NOW())
+    </insert>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM operation_log
+        ORDER BY created_time DESC
+    </select>
+
+    <select id="selectByTargetId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM operation_log
+        WHERE target_id = #{targetId}
+        ORDER BY created_time DESC
+    </select>
+
+</mapper>

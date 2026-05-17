@@ -137,14 +137,15 @@
                 <el-form-item label="购买量" prop="amount">
                     <el-input-number 
                         v-model="buyForm.amount" 
-                        :min="0.1" 
+                        :min="1" 
                         :max="currentOrder?.amount || 100"
-                        :precision="2"
+                        :precision="0"
+                        :step="1"
                         style="width: 100%"
                     />
                 </el-form-item>
                 <el-form-item label="总价">
-                    <el-input :value="formatPrice(totalPrice)" disabled />
+                    <el-input :value="totalPriceDisplay" disabled />
                 </el-form-item>
                 <el-form-item label="交易方式">
                     <el-radio-group v-model="buyForm.tradeMode">
@@ -152,6 +153,32 @@
                         <el-radio :label="0">链下交易 (模拟)</el-radio>
                     </el-radio-group>
                 </el-form-item>
+                <template v-if="buyForm.tradeMode === 1 && walletStore.isConnected">
+                    <el-form-item label="支付方式">
+                        <el-radio-group v-model="buyForm.paymentMode">
+                            <el-radio label="wallet">钱包全额支付</el-radio>
+                            <el-radio label="frozenFirst">冻结余额优先</el-radio>
+                        </el-radio-group>
+                    </el-form-item>
+                    <el-alert
+                        type="info"
+                        :closable="false"
+                        style="margin-top: 10px;"
+                    >
+                        <template #title>
+                            支付说明
+                        </template>
+                        当前冻结余额：{{ frozenBalanceDisplay }} ETH；
+                        本次冻结抵扣：{{ frozenUsedDisplay }} ETH；
+                        钱包需支付：{{ directPaymentDisplay }} ETH
+                    </el-alert>
+                    <div
+                        v-if="buyForm.paymentMode === 'frozenFirst'"
+                        style="margin-top: 8px; color: #909399; font-size: 13px;"
+                    >
+                        若冻结余额不足，可先前往钱包页面执行“存款 -> 冻结余额”。
+                    </div>
+                </template>
                 <el-alert 
                     v-if="buyForm.tradeMode === 1 && !walletStore.isConnected"
                     title="请先连接MetaMask钱包"
@@ -232,7 +259,8 @@ const filteredAndSortedOrders = computed(() => {
 
 const buyForm = reactive({
     amount: 1,
-    tradeMode: walletStore.isConnected ? 1 : 0
+    tradeMode: walletStore.isConnected ? 1 : 0,
+    paymentMode: 'wallet'
 })
 
 const buyRules = {
@@ -241,9 +269,46 @@ const buyRules = {
     ]
 }
 
-const totalPrice = computed(() => {
-    if (!currentOrder.value || !buyForm.amount) return 0
-    return buyForm.amount * currentOrder.value.price
+const contractBalanceWei = reactive({
+    available: '0',
+    frozen: '0'
+})
+
+const totalPriceWei = computed(() => {
+    if (!currentOrder.value || !buyForm.amount) {
+        return ethers.BigNumber.from(0)
+    }
+
+    return ethers.BigNumber.from(currentOrder.value.price.toString()).mul(buyForm.amount)
+})
+
+const totalPriceDisplay = computed(() => {
+    return `${parseFloat(ethers.utils.formatEther(totalPriceWei.value)).toFixed(6)} ETH`
+})
+
+const frozenUsedWei = computed(() => {
+    if (buyForm.tradeMode !== 1 || buyForm.paymentMode !== 'frozenFirst') {
+        return ethers.BigNumber.from(0)
+    }
+
+    const frozenWei = ethers.BigNumber.from(contractBalanceWei.frozen)
+    return frozenWei.gte(totalPriceWei.value) ? totalPriceWei.value : frozenWei
+})
+
+const directPaymentWei = computed(() => {
+    return totalPriceWei.value.sub(frozenUsedWei.value)
+})
+
+const frozenBalanceDisplay = computed(() => {
+    return parseFloat(ethers.utils.formatEther(contractBalanceWei.frozen)).toFixed(6)
+})
+
+const frozenUsedDisplay = computed(() => {
+    return parseFloat(ethers.utils.formatEther(frozenUsedWei.value)).toFixed(6)
+})
+
+const directPaymentDisplay = computed(() => {
+    return parseFloat(ethers.utils.formatEther(directPaymentWei.value)).toFixed(6)
 })
 
 const totalAmount = computed(() => {
@@ -270,10 +335,26 @@ const fetchOpenOrders = async () => {
     }
 }
 
-const openBuyDialog = (order) => {
+const refreshContractFunding = async () => {
+    if (!walletStore.isConnected) {
+        contractBalanceWei.available = '0'
+        contractBalanceWei.frozen = '0'
+        return
+    }
+
+    const balance = await walletStore.getContractBalanceRaw(walletStore.account)
+    contractBalanceWei.available = balance.available.toString()
+    contractBalanceWei.frozen = balance.frozen.toString()
+}
+
+const openBuyDialog = async (order) => {
     currentOrder.value = order
     buyForm.amount = 1
     buyForm.tradeMode = walletStore.isConnected ? 1 : 0
+    buyForm.paymentMode = 'wallet'
+    if (walletStore.isConnected) {
+        await refreshContractFunding()
+    }
     buyDialogVisible.value = true
 }
 
@@ -297,14 +378,18 @@ const handleOnChainBuy = async () => {
         return
     }
 
+    if (!currentOrder.value?.orderIdOnChain) {
+        ElMessage.error('当前订单缺少链上订单号，无法发起链上交易')
+        return
+    }
+
     buyLoading.value = true
     try {
-        const totalPriceWei = Math.floor(buyForm.amount * currentOrder.value.price)
-
         const result = await walletStore.buyEnergyOnChain(
-            currentOrder.value.id,
+            currentOrder.value.orderIdOnChain,
             buyForm.amount,
-            totalPriceWei
+            totalPriceWei.value.toString(),
+            directPaymentWei.value.toString()
         )
 
         const response = await axios.post('/api/trade/buy', {
@@ -321,6 +406,7 @@ const handleOnChainBuy = async () => {
         if (response.data.code === 200) {
             ElMessage.success(`购买成功！交易哈希: ${result.txHash.substring(0, 10)}...`)
             buyDialogVisible.value = false
+            await refreshContractFunding()
             fetchOpenOrders()
         } else {
             ElMessage.error(response.data.message || '购买失败')

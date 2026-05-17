@@ -38,3 +38,17 @@ CREATE TABLE IF NOT EXISTS `transaction` (
   `timestamp` BIGINT NOT NULL,
   UNIQUE KEY `uk_tx_hash` (`tx_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 创建操作日志表
+CREATE TABLE IF NOT EXISTS `operation_log` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '日志ID',
+  `operator_id` BIGINT NOT NULL COMMENT '操作人ID',
+  `operator_name` VARCHAR(50) NOT NULL COMMENT '操作人姓名',
+  `target_id` BIGINT NOT NULL COMMENT '被操作对象ID',
+  `target_name` VARCHAR(50) NOT NULL COMMENT '被操作对象名称',
+  `operation_type` VARCHAR(50) NOT NULL COMMENT '操作类型',
+  `operation_detail` TEXT COMMENT '详细描述',
+  `created_time` DATETIME NOT NULL COMMENT '操作时间',
+  INDEX `idx_operator_id` (`operator_id`),
+  INDEX `idx_target_id` (`target_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员操作日志表';

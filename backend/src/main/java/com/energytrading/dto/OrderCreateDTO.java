@@ -4,6 +4,7 @@ public class OrderCreateDTO {
     private Double amount;
     private Long price;
     private String sellerAddress;
+    private Long orderIdOnChain;
     private String txHash;
     private Long blockNumber;
 
@@ -13,6 +14,8 @@ public class OrderCreateDTO {
     public void setPrice(Long price) { this.price = price; }
     public String getSellerAddress() { return sellerAddress; }
     public void setSellerAddress(String sellerAddress) { this.sellerAddress = sellerAddress; }
+    public Long getOrderIdOnChain() { return orderIdOnChain; }
+    public void setOrderIdOnChain(Long orderIdOnChain) { this.orderIdOnChain = orderIdOnChain; }
     public String getTxHash() { return txHash; }
     public void setTxHash(String txHash) { this.txHash = txHash; }
     public Long getBlockNumber() { return blockNumber; }
