@@ -81,6 +81,18 @@
             
             <el-table :data="filteredAndSortedOrders" style="width: 100%" v-loading="loading">
                 <el-table-column prop="sellerName" label="卖家" width="120" />
+                <el-table-column label="信用评价" width="150">
+                    <template #default="{ row }">
+                        <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                            <el-tag :type="getCreditLevelType(row.sellerTrustScore)" size="small" effect="dark">
+                                {{ getCreditLevel(row.sellerTrustScore) }}
+                            </el-tag>
+                            <span style="font-size: 12px; color: #909399; margin-top: 4px;">
+                                评分: {{ row.sellerTrustScore || 0 }}
+                            </span>
+                        </div>
+                    </template>
+                </el-table-column>
                 <el-table-column label="卖家地址" width="180">
                     <template #default="{ row }">
                         {{ formatAddress(row.sellerAddress) }}
@@ -455,6 +467,24 @@ const goToWallet = () => {
 const formatAddress = (address) => {
     if (!address) return ''
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`
+}
+
+const getCreditLevel = (score) => {
+    if (!score && score !== 0) return 'B (及格)'
+    if (score >= 90) return 'AAA (极好)'
+    if (score >= 80) return 'AA (优秀)'
+    if (score >= 70) return 'A (良好)'
+    if (score >= 60) return 'B (及格)'
+    return 'C (待提高)'
+}
+
+const getCreditLevelType = (score) => {
+    if (!score && score !== 0) return 'info'
+    if (score >= 90) return 'success'
+    if (score >= 80) return ''
+    if (score >= 70) return 'warning'
+    if (score >= 60) return 'info'
+    return 'danger'
 }
 
 const formatPrice = (price) => {

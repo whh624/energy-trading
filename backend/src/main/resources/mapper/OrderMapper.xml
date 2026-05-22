@@ -7,6 +7,7 @@
         <result column="order_id_on_chain" property="orderIdOnChain"/>
         <result column="seller_address" property="sellerAddress"/>
         <result column="seller_name" property="sellerName"/>
+        <result column="seller_trust_score" property="sellerTrustScore"/>
         <result column="amount" property="amount"/>
         <result column="price" property="price"/>
         <result column="status" property="status"/>
@@ -15,7 +16,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        o.id, o.order_id_on_chain, o.seller_address, u.username as seller_name, o.amount, o.price, o.status, o.created_time, o.updated_time
+        o.id, o.order_id_on_chain, o.seller_address, u.username as seller_name, u.trust_score as seller_trust_score, o.amount, o.price, o.status, o.created_time, o.updated_time
     </sql>
 
     <select id="selectById" resultMap="BaseResultMap">

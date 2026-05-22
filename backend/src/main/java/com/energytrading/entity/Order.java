@@ -7,6 +7,7 @@ public class Order {
     private Long orderIdOnChain;
     private String sellerAddress;
     private String sellerName;
+    private Integer sellerTrustScore; // 新增：卖家信用分
     private Double amount;
     private Long price;
     private Integer status;
@@ -26,6 +27,8 @@ public class Order {
     public void setSellerAddress(String sellerAddress) { this.sellerAddress = sellerAddress; }
     public String getSellerName() { return sellerName; }
     public void setSellerName(String sellerName) { this.sellerName = sellerName; }
+    public Integer getSellerTrustScore() { return sellerTrustScore; }
+    public void setSellerTrustScore(Integer sellerTrustScore) { this.sellerTrustScore = sellerTrustScore; }
     public Double getAmount() { return amount; }
     public void setAmount(Double amount) { this.amount = amount; }
     public Long getPrice() { return price; }

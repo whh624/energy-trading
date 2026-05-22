@@ -28,8 +28,8 @@ public class CreditService {
     @Autowired
     private OrderMapper orderMapper;
 
-    private static final int BASE_SCORE = 100;
-    private static final int MAX_SCORE = 200;
+    private static final int BASE_SCORE = 60; // 基础分调为 60（及格线）
+    private static final int MAX_SCORE = 100; // 百分制最高 100
     private static final int MIN_SCORE = 0;
 
     /**
@@ -55,15 +55,15 @@ public class CreditService {
         List<Order> historyOrders = orderMapper.selectBySellerAddress(blockchainAddress);
         int totalOrders = historyOrders.size();
 
-        // 4. 自动评分算法模型
-        // 基础分 100
-        // 每笔成交交易 +2 分
-        // 每 100 kWh 交易量 +1 分
-        // 每次积极挂单 (无论成交与否) +1 分 (体现市场活跃度)
+        // 4. 自动评分算法模型 (百分制优化)
+        // 基础分 60
+        // 每笔成交交易 +1 分
+        // 每 200 kWh 交易量 +1 分
+        // 每次积极挂单 +0.5 分
         int calculatedScore = BASE_SCORE 
-                            + (totalTransactions * 2) 
-                            + (int)(totalVolume / 100) 
-                            + (totalOrders * 1);
+                            + (totalTransactions * 1) 
+                            + (int)(totalVolume / 200) 
+                            + (int)(totalOrders * 0.5);
 
         // 限制最高分和最低分
         if (calculatedScore > MAX_SCORE) calculatedScore = MAX_SCORE;

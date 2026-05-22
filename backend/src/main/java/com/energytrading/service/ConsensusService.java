@@ -70,9 +70,9 @@ public class ConsensusService {
         List<String> logs = new ArrayList<>();
         logs.add("PoC 共识算法启动 - 模式: 电力贡献度加权证明");
         logs.add("正在检索网络节点贡献度分值...");
-        logs.add("验证节点 [StateGrid] 贡献度: 92.5 (权重: 0.35)");
-        logs.add("验证节点 [SolarPark] 贡献度: 88.2 (权重: 0.25)");
-        logs.add("验证节点 [WindFarm] 贡献度: 85.0 (权重: 0.20)");
+        logs.add("验证节点 [StateGrid] 信用分: 92 (等级: AAA)");
+        logs.add("验证节点 [SolarPark] 信用分: 88 (等级: AA)");
+        logs.add("验证节点 [WindFarm] 信用分: 85 (等级: AA)");
         logs.add("共识委员会已生成，正在对交易进行多重签名...");
         logs.add("共识结果: 累计权重 0.80 超过阈值 0.60，准予上链");
         return logs;
