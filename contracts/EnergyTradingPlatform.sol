@@ -38,6 +38,26 @@ contract EnergyTradingPlatform {
     mapping(address => uint256) private availableBalances;
     bool private locked;
 
+    // --- PBFT 共识相关变量 ---
+    enum ConsensusPhase { NONE, PRE_PREPARE, PREPARE, COMMIT, SUCCESS }
+    
+    struct PBFTState {
+        ConsensusPhase phase;
+        uint256 prepareCount;
+        uint256 commitCount;
+        mapping(address => bool) hasPrepared;
+        mapping(address => bool) hasCommitted;
+    }
+
+    mapping(uint256 => PBFTState) public pbftStates;
+    mapping(address => bool) public isValidator;
+    uint256 public validatorCount;
+    uint256 public constant MIN_QUORUM = 3; 
+
+    event PBFTPhaseChanged(uint256 orderId, ConsensusPhase phase);
+    event ValidatorAdded(address validator);
+    // --------------------------
+
     event OrderCreated(uint256 orderId, address seller, uint256 amount, uint256 price);
     event EnergyBought(uint256 transactionId, uint256 orderId, address buyer, uint256 amount, uint256 totalPrice);
     event OrderCancelled(uint256 orderId);
@@ -131,9 +151,65 @@ contract EnergyTradingPlatform {
         return orderId;
     }
 
+    // --- PBFT 核心函数 ---
+    
+    function addValidator(address _v) external {
+        if (!isValidator[_v]) {
+            isValidator[_v] = true;
+            validatorCount++;
+            emit ValidatorAdded(_v);
+        }
+    }
+
+    function prePrepare(uint256 _orderId) external orderExists(_orderId) {
+        require(isValidator[msg.sender], "Only validator can propose");
+        require(pbftStates[_orderId].phase == ConsensusPhase.NONE, "Already proposed");
+        
+        pbftStates[_orderId].phase = ConsensusPhase.PRE_PREPARE;
+        emit PBFTPhaseChanged(_orderId, ConsensusPhase.PRE_PREPARE);
+    }
+
+    function prepare(uint256 _orderId) external orderExists(_orderId) {
+        require(isValidator[msg.sender], "Only validator can prepare");
+        PBFTState storage state = pbftStates[_orderId];
+        require(state.phase == ConsensusPhase.PRE_PREPARE || state.phase == ConsensusPhase.PREPARE, "Invalid phase");
+        require(!state.hasPrepared[msg.sender], "Already prepared");
+
+        state.hasPrepared[msg.sender] = true;
+        state.prepareCount++;
+
+        if (state.prepareCount >= MIN_QUORUM) {
+            state.phase = ConsensusPhase.PREPARE;
+            emit PBFTPhaseChanged(_orderId, ConsensusPhase.PREPARE);
+        }
+    }
+
+    function commit(uint256 _orderId) external orderExists(_orderId) {
+        require(isValidator[msg.sender], "Only validator can commit");
+        PBFTState storage state = pbftStates[_orderId];
+        require(state.phase == ConsensusPhase.PREPARE || state.phase == ConsensusPhase.COMMIT, "Invalid phase");
+        require(!state.hasCommitted[msg.sender], "Already committed");
+
+        state.hasCommitted[msg.sender] = true;
+        state.commitCount++;
+
+        if (state.commitCount >= MIN_QUORUM) {
+            state.phase = ConsensusPhase.SUCCESS;
+            emit PBFTPhaseChanged(_orderId, ConsensusPhase.SUCCESS);
+        }
+    }
+    // ----------------------
+
     function buyEnergy(uint256 _orderId, uint256 _amount) external payable nonReentrant orderExists(_orderId) {
         Order storage order = orders[_orderId];
         require(order.status == OrderStatus.OPEN, "Order status is not correct");
+        
+        // 强制 PBFT 共识校验
+        require(
+            pbftStates[_orderId].phase == ConsensusPhase.SUCCESS,
+            "PBFT Consensus not reached"
+        );
+
         require(_amount > 0, "Purchase amount must be greater than 0");
         require(_amount <= order.amount, "Purchase amount cannot exceed order amount");
         
@@ -144,7 +220,6 @@ contract EnergyTradingPlatform {
             require(frozenBalances[msg.sender] >= remaining, "Insufficient frozen balance");
         }
 
-        // Effects: update order state and persist transaction before any external transfer.
         order.amount -= _amount;
         if (order.amount == 0) {
             order.status = OrderStatus.FILLED;
@@ -187,14 +262,14 @@ contract EnergyTradingPlatform {
         emit OrderCancelled(_orderId);
     }
 
-    function getOrder(uint256 _orderId) external view returns (
+    function getOrder(uint256 _orderId) external view orderExists(_orderId) returns (
         uint256 id,
         address seller,
         uint256 amount,
         uint256 price,
         OrderStatus status,
         uint256 createdAt
-    ) orderExists(_orderId) {
+    ) {
         Order storage order = orders[_orderId];
         return (
             order.id,
@@ -210,7 +285,7 @@ contract EnergyTradingPlatform {
         return userTransactions[_user];
     }
 
-    function getTransaction(uint256 _transactionId) external view returns (
+    function getTransaction(uint256 _transactionId) external view transactionExists(_transactionId) returns (
         uint256 id,
         uint256 orderId,
         address buyer,
@@ -218,7 +293,7 @@ contract EnergyTradingPlatform {
         uint256 amount,
         uint256 totalPrice,
         uint256 timestamp
-    ) transactionExists(_transactionId) {
+    ) {
         Transaction storage transaction = transactions[_transactionId];
         return (
             transaction.id,
