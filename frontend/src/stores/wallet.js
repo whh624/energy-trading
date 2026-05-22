@@ -70,6 +70,34 @@ const CONTRACT_ABI = [
         "type": "function"
     },
     {
+        "inputs": [{"name": "_v", "type": "address"}],
+        "name": "addValidator",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "_orderId", "type": "uint256"}],
+        "name": "prePrepare",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "_orderId", "type": "uint256"}],
+        "name": "prepare",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "_orderId", "type": "uint256"}],
+        "name": "commit",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
         "inputs": [{"name": "_orderId", "type": "uint256"}],
         "name": "getOrder",
         "outputs": [
@@ -102,7 +130,7 @@ const CONTRACT_ABI = [
     }
 ]
 
-const CONTRACT_ADDRESS = '0x3e85B795BD87d0E10d9aac9a910Ecee2609Af476'
+const CONTRACT_ADDRESS = '0xFde04D55c5f479CcC1bb09441bC714ebbbd7E678'
 const GANACHE_RPC_URL = 'http://localhost:7545'
 
 export const useWalletStore = defineStore('wallet', () => {
