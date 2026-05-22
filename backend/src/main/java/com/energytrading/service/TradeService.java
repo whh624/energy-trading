@@ -53,10 +53,13 @@ public class TradeService {
         
         Long totalPrice = (long) (dto.getAmount() * order.getPrice());
         
-        // 执行 PBFT 共识算法模拟
-        boolean consensusReached = consensusService.runPBFTConsensus("Order:" + order.getOrderIdOnChain() + ",Amount:" + dto.getAmount());
+        // 执行 PoC (Proof of Contribution) 贡献度共识算法
+        boolean consensusReached = consensusService.runPoCConsensus(
+                "Order:" + order.getOrderIdOnChain() + ",Amount:" + dto.getAmount(), 
+                buyerAddress
+        );
         if (!consensusReached) {
-            throw new RuntimeException("区块链网络共识达成失败，交易已撤销");
+            throw new RuntimeException("区块链 PoC 共识验证未通过，贡献度评分不足或节点验证失败");
         }
         
         String txHash;

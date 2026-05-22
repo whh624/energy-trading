@@ -49,13 +49,14 @@ public class AlgorithmController {
     }
 
     /**
-     * 演示 PBFT 共识过程
+     * 演示 PoC 共识过程
      */
     @GetMapping("/consensus-demo")
-    public Result consensusDemo(@RequestParam(defaultValue = "test-data") String data) {
-        boolean success = consensusService.runPBFTConsensus(data);
+    public Result consensusDemo(@RequestParam(defaultValue = "test-user-address") String address) {
+        boolean success = consensusService.runPoCConsensus("demo-data", address);
         Map<String, Object> res = new HashMap<>();
         res.put("success", success);
+        res.put("algorithm", "PoC (Proof of Contribution)");
         res.put("logs", consensusService.getConsensusLogs("demo"));
         return Result.success(res);
     }

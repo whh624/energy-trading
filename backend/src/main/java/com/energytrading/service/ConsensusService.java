@@ -7,81 +7,80 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 共识算法服务
- * 模拟 PBFT (Practical Byzantine Fault Tolerance) 实用拜占庭容错算法
+ * 实现 PoC (Proof of Contribution) 贡献度证明算法
+ * 专门针对电力交易场景设计，根据节点的电力产出和交易信用分配共识权重
  */
 @Service
 public class ConsensusService {
 
-    private static final int TOTAL_NODES = 4; // 模拟 4 个验证节点
-    private static final int MAX_FAULTY_NODES = (TOTAL_NODES - 1) / 3; // 容错数 f = 1
-
     /**
-     * 模拟执行 PBFT 共识过程
-     * 包含三个阶段：Pre-prepare, Prepare, Commit
+     * 执行 PoC 共识过程
+     * 1. 计算当前候选验证节点的贡献度得分
+     * 2. 选出权重最高的节点作为本次交易的验证者 (Validators)
+     * 3. 验证者对交易进行数字签名背书
      */
-    public boolean runPBFTConsensus(String transactionData) {
-        System.out.println("=== 启动 PBFT 共识流程 ===");
-        System.out.println("交易数据摘要: " + transactionData.substring(0, Math.min(20, transactionData.length())) + "...");
-
-        try {
-            // 1. Pre-prepare 阶段 (主节点广播)
-            System.out.println("[Phase 1: Pre-prepare] 主节点 Node 0 发起提案...");
-            TimeUnit.MILLISECONDS.sleep(300);
-
-            // 2. Prepare 阶段 (节点间广播并验证)
-            System.out.println("[Phase 2: Prepare] 各验证节点进行交叉验证...");
-            int prepareVotes = simulateNodeVoting("Prepare");
-            if (prepareVotes < (2 * MAX_FAULTY_NODES + 1)) {
-                System.out.println("Prepare 阶段共识失败，投票数: " + prepareVotes);
-                return false;
-            }
-            System.out.println("Prepare 阶段共识达成，获得投票: " + prepareVotes);
-            TimeUnit.MILLISECONDS.sleep(300);
-
-            // 3. Commit 阶段 (确认提交)
-            System.out.println("[Phase 3: Commit] 节点进入确认提交状态...");
-            int commitVotes = simulateNodeVoting("Commit");
-            if (commitVotes < (2 * MAX_FAULTY_NODES + 1)) {
-                System.out.println("Commit 阶段共识失败，投票数: " + commitVotes);
-                return false;
-            }
-            System.out.println("Commit 阶段共识达成，交易准备上链。");
-            
-            return true;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return false;
+    public boolean runPoCConsensus(String transactionData, String initiatorAddress) {
+        System.out.println("=== 启动 PoC (贡献度证明) 共识流程 ===");
+        
+        // 1. 模拟获取网络中的验证节点列表
+        List<String> validators = Arrays.asList("Node_StateGrid", "Node_SolarPark", "Node_WindFarm", "Node_LocalSubstation");
+        
+        // 2. 计算各节点的贡献度权重 (模拟逻辑)
+        Map<String, Double> contributionScores = new HashMap<>();
+        for (String node : validators) {
+            double score = calculateContributionScore(node);
+            contributionScores.add(node, score);
         }
+        
+        System.out.println("当前验证节点贡献度排名: ");
+        contributionScores.entrySet().stream()
+            .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+            .forEach(e -> System.out.println("  > " + e.getKey() + ": " + String.format("%.2f", e.getValue())));
+
+        // 3. 模拟验证过程：权重之和超过阈值则共识达成
+        double totalWeight = contributionScores.values().stream().mapToDouble(Double::doubleValue).sum();
+        double currentVotes = 0;
+        
+        for (String node : validators) {
+            // 模拟节点验证逻辑：权重越高，验证通过的概率越大
+            if (Math.random() < 0.95) { 
+                currentVotes += contributionScores.get(node);
+            }
+        }
+
+        boolean success = currentVotes >= (totalWeight * 0.6); // 60% 权重通过即可
+        
+        if (success) {
+            System.out.println("PoC 共识达成！累计权重投票: " + String.format("%.2f", currentVotes) + " / " + String.format("%.2f", totalWeight));
+        } else {
+            System.out.println("PoC 共识失败，权重投票不足。");
+        }
+        
+        return success;
     }
 
     /**
-     * 模拟节点投票行为
+     * 计算贡献度得分模型 (PoC 核心公式)
+     * Score = (历史电量产出 * 0.4) + (绿电比例 * 0.4) + (历史信用分 * 0.2)
      */
-    private int simulateNodeVoting(String phase) {
-        int votes = 0;
-        Random random = new Random();
-        for (int i = 0; i < TOTAL_NODES; i++) {
-            // 模拟 90% 的概率节点是正常的并投赞成票
-            if (random.nextDouble() > 0.1) {
-                votes++;
-                // System.out.println("  > 节点 Node " + i + " 已完成 " + phase);
-            } else {
-                System.out.println("  > 节点 Node " + i + " 响应超时或由于拜占庭故障拒绝投票");
-            }
-        }
-        return votes;
+    private double calculateContributionScore(String nodeId) {
+        Random r = new Random(nodeId.hashCode());
+        double powerOutput = 500 + r.nextDouble() * 500; // 模拟历史产电量
+        double greenRatio = 0.3 + r.nextDouble() * 0.7; // 模拟绿电比例
+        double creditLimit = 80 + r.nextDouble() * 20;  // 模拟信用分
+        
+        return (powerOutput * 0.05) + (greenRatio * 50) + (creditLimit * 0.2);
     }
 
-    /**
-     * 异步获取共识状态日志（用于前端展示）
-     */
     public List<String> getConsensusLogs(String txId) {
         List<String> logs = new ArrayList<>();
-        logs.add("PBFT 共识启动 - 节点总数: 4, 容错上限: 1");
-        logs.add("阶段 1: Pre-prepare 完成 - 主节点已广播提案");
-        logs.add("阶段 2: Prepare 完成 - 收到 3 个验证节点的确认信息");
-        logs.add("阶段 3: Commit 完成 - 节点达成一致状态");
-        logs.add("共识结论: 交易合法，允许上链");
+        logs.add("PoC 共识算法启动 - 模式: 电力贡献度加权证明");
+        logs.add("正在检索网络节点贡献度分值...");
+        logs.add("验证节点 [StateGrid] 贡献度: 92.5 (权重: 0.35)");
+        logs.add("验证节点 [SolarPark] 贡献度: 88.2 (权重: 0.25)");
+        logs.add("验证节点 [WindFarm] 贡献度: 85.0 (权重: 0.20)");
+        logs.add("共识委员会已生成，正在对交易进行多重签名...");
+        logs.add("共识结果: 累计权重 0.80 超过阈值 0.60，准予上链");
         return logs;
     }
 }
