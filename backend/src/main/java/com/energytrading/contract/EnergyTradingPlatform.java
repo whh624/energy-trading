@@ -33,6 +33,11 @@ public class EnergyTradingPlatform extends Contract {
     private static final String GET_TRANSACTION_FUNCTION = "getTransaction(uint256)";
     private static final String GET_OPEN_ORDERS_FUNCTION = "getOpenOrders()";
     private static final String GET_USER_ORDERS_FUNCTION = "getUserOrders(address)";
+    
+    private static final String ADD_VALIDATOR_FUNCTION = "addValidator(address)";
+    private static final String PRE_PREPARE_FUNCTION = "prePrepare(uint256)";
+    private static final String PREPARE_FUNCTION = "prepare(uint256)";
+    private static final String COMMIT_FUNCTION = "commit(uint256)";
 
     protected EnergyTradingPlatform(String contractAddress, Web3j web3j, TransactionManager transactionManager, ContractGasProvider gasProvider) {
         super(BINARY, contractAddress, web3j, transactionManager, gasProvider);
@@ -118,6 +123,38 @@ public class EnergyTradingPlatform extends Contract {
                 Arrays.asList(new Address(user)),
                 Arrays.asList(new TypeReference<DynamicArray<Uint256>>() {}));
         return executeRemoteCallMultipleValueReturn(function);
+    }
+
+    public RemoteCall<TransactionReceipt> addValidator(String validator) {
+        Function function = new Function(
+                ADD_VALIDATOR_FUNCTION,
+                Arrays.asList(new Address(validator)),
+                Collections.emptyList());
+        return executeRemoteCallTransaction(function);
+    }
+
+    public RemoteCall<TransactionReceipt> prePrepare(BigInteger orderId) {
+        Function function = new Function(
+                PRE_PREPARE_FUNCTION,
+                Arrays.asList(new Uint256(orderId)),
+                Collections.emptyList());
+        return executeRemoteCallTransaction(function);
+    }
+
+    public RemoteCall<TransactionReceipt> prepare(BigInteger orderId) {
+        Function function = new Function(
+                PREPARE_FUNCTION,
+                Arrays.asList(new Uint256(orderId)),
+                Collections.emptyList());
+        return executeRemoteCallTransaction(function);
+    }
+
+    public RemoteCall<TransactionReceipt> commit(BigInteger orderId) {
+        Function function = new Function(
+                COMMIT_FUNCTION,
+                Arrays.asList(new Uint256(orderId)),
+                Collections.emptyList());
+        return executeRemoteCallTransaction(function);
     }
 
     public static EnergyTradingPlatform load(String contractAddress, Web3j web3j, Credentials credentials, ContractGasProvider gasProvider) {

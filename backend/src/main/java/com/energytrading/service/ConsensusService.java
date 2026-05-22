@@ -1,6 +1,10 @@
 package com.energytrading.service;
 
+import com.energytrading.contract.EnergyTradingPlatform;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;

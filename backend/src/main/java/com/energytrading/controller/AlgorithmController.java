@@ -2,6 +2,7 @@ package com.energytrading.controller;
 
 import com.energytrading.common.Result;
 import com.energytrading.service.AlgorithmService;
+import com.energytrading.service.ConsensusService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,14 +50,14 @@ public class AlgorithmController {
     }
 
     /**
-     * 演示 PoC 共识过程
+     * 演示 PoC/PBFT 共识过程
      */
     @GetMapping("/consensus-demo")
-    public Result consensusDemo(@RequestParam(defaultValue = "test-user-address") String address) {
-        boolean success = consensusService.runPoCConsensus("demo-data", address);
+    public Result consensusDemo(@RequestParam(defaultValue = "0") Long orderId) {
+        boolean success = consensusService.runPBFTConsensus(orderId);
         Map<String, Object> res = new HashMap<>();
         res.put("success", success);
-        res.put("algorithm", "PoC (Proof of Contribution)");
+        res.put("algorithm", "PBFT (Practical Byzantine Fault Tolerance)");
         res.put("logs", consensusService.getConsensusLogs("demo"));
         return Result.success(res);
     }
