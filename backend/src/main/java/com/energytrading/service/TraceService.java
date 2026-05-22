@@ -34,6 +34,9 @@ public class TraceService {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private AlgorithmService algorithmService;
+
     public TraceResultDTO verifyTransaction(String txHash) {
         TraceResultDTO result = new TraceResultDTO();
         result.setTxHash(txHash);
@@ -92,60 +95,35 @@ public class TraceService {
 
         List<TracePathDTO.TraceNode> nodes = new ArrayList<>();
 
-        TracePathDTO.TraceNode node1 = new TracePathDTO.TraceNode();
-        node1.setStep(1);
-        node1.setType("producer");
-        node1.setTitle("电力生产");
-        node1.setDescription("产电用户发布电量出售挂单");
-        node1.setAddress(tx.getSellerAddress());
-        node1.setUserName(tx.getSellerName() != null ? tx.getSellerName() : "未知卖家");
-        node1.setTimestamp(formatTimestamp(tx.getTimestamp() - 3600));
-        node1.setStatus("completed");
-        nodes.add(node1);
+        // 使用复杂算法计算电力传输的最优路径
+        List<AlgorithmService.GridNode> gridPath = algorithmService.calculateOptimalPath(
+                tx.getSellerAddress(), tx.getBuyerAddress(), txHash);
 
-        TracePathDTO.TraceNode node2 = new TracePathDTO.TraceNode();
-        node2.setStep(2);
-        node2.setType("listing");
-        node2.setTitle("挂单发布");
-        node2.setDescription("电量挂单进入交易市场");
-        node2.setAddress(tx.getSellerAddress());
-        node2.setUserName(tx.getSellerName() != null ? tx.getSellerName() : "未知卖家");
-        node2.setTimestamp(formatTimestamp(tx.getTimestamp() - 1800));
-        node2.setStatus("completed");
-        nodes.add(node2);
-
-        TracePathDTO.TraceNode node3 = new TracePathDTO.TraceNode();
-        node3.setStep(3);
-        node3.setType("trade");
-        node3.setTitle("交易匹配");
-        node3.setDescription("用电用户发起购买请求");
-        node3.setAddress(tx.getBuyerAddress());
-        node3.setUserName(tx.getBuyerName() != null ? tx.getBuyerName() : "未知买家");
-        node3.setTimestamp(formatTimestamp(tx.getTimestamp()));
-        node3.setStatus("completed");
-        nodes.add(node3);
-
-        TracePathDTO.TraceNode node4 = new TracePathDTO.TraceNode();
-        node4.setStep(4);
-        node4.setType("blockchain");
-        node4.setTitle("链上记录");
-        node4.setDescription("交易数据写入区块链");
-        node4.setAddress(txHash);
-        node4.setUserName("智能合约");
-        node4.setTimestamp(formatTimestamp(tx.getTimestamp()));
-        node4.setStatus("completed");
-        nodes.add(node4);
-
-        TracePathDTO.TraceNode node5 = new TracePathDTO.TraceNode();
-        node5.setStep(5);
-        node5.setType("delivery");
-        node5.setTitle("电量交割");
-        node5.setDescription("电量从卖家转移至买家");
-        node5.setAddress(tx.getBuyerAddress());
-        node5.setUserName(tx.getBuyerName() != null ? tx.getBuyerName() : "未知买家");
-        node5.setTimestamp(formatTimestamp(tx.getTimestamp() + 60));
-        node5.setStatus("completed");
-        nodes.add(node5);
+        for (int i = 0; i < gridPath.size(); i++) {
+            AlgorithmService.GridNode gn = gridPath.get(i);
+            TracePathDTO.TraceNode node = new TracePathDTO.TraceNode();
+            node.setStep(i + 1);
+            node.setType(gn.type);
+            node.setTitle(gn.name);
+            node.setAddress(gn.id);
+            node.setStatus("completed");
+            
+            // 补充一些描述信息
+            if ("producer".equals(gn.type)) {
+                node.setDescription("清洁能源发电机组并网点");
+                node.setUserName(tx.getSellerName());
+                node.setTimestamp(formatTimestamp(tx.getTimestamp() - 3600));
+            } else if ("consumer".equals(gn.type)) {
+                node.setDescription("终端用户智能电表接入");
+                node.setUserName(tx.getBuyerName());
+                node.setTimestamp(formatTimestamp(tx.getTimestamp()));
+            } else {
+                node.setDescription("电力调度中心自动路由节点");
+                node.setUserName("电网节点");
+                node.setTimestamp(formatTimestamp(tx.getTimestamp() - 1800 + i * 300));
+            }
+            nodes.add(node);
+        }
 
         path.setNodes(nodes);
 

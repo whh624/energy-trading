@@ -313,6 +313,9 @@ const formatHash = (hash) => {
 const getNodeType = (type) => {
     const types = {
         producer: 'success',
+        substation: 'primary',
+        transformer: 'warning',
+        consumer: 'danger',
         listing: 'primary',
         trade: 'warning',
         blockchain: 'danger',
@@ -324,6 +327,9 @@ const getNodeType = (type) => {
 const getNodeIcon = (type) => {
     const icons = {
         producer: '☀️',
+        substation: '🏢',
+        transformer: '🔌',
+        consumer: '🏠',
         listing: '📋',
         trade: '🤝',
         blockchain: '🔗',
