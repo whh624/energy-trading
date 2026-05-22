@@ -46,6 +46,9 @@ public class OrderService {
     @Autowired
     private UserService userService; // 注入 UserService
 
+    @Autowired
+    private CreditService creditService;
+
     private static final Event ORDER_CREATED_EVENT = new Event(
             "OrderCreated",
             Arrays.asList(
@@ -89,6 +92,10 @@ public class OrderService {
         order.setStatus(0);
         
         orderMapper.insert(order);
+        
+        // 发布订单后，自动更新卖家的信用分 (基于挂单行为的活跃度奖励)
+        creditService.updateAutomatedTrustScore(dto.getSellerAddress());
+        
         // 调用价格偏离度监控
         monitorPriceBias(order);
         return order;

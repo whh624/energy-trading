@@ -36,6 +36,9 @@ public class TradeService {
     @Autowired
     private ConsensusService consensusService;
 
+    @Autowired
+    private CreditService creditService;
+
     @Transactional
     public Transaction buyEnergy(TradeDTO dto, String buyerAddress, String frontTxHash, Long frontBlockNumber) throws Exception {
         Order order = orderMapper.selectById(dto.getOrderId());
@@ -84,6 +87,10 @@ public class TradeService {
         transaction.setTimestamp(System.currentTimeMillis() / 1000);
         
         transactionMapper.insert(transaction);
+        
+        // 交易成功后，自动触发买卖双方的信用分重新评估
+        creditService.updateAutomatedTrustScore(buyerAddress);
+        creditService.updateAutomatedTrustScore(order.getSellerAddress());
         
         Double newAmount = order.getAmount() - dto.getAmount();
         if (newAmount <= 0) {
